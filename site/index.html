@@ -1,0 +1,470 @@
+<title>Tadabbur Concept Search</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a working search tool — query bar, ranked ayah cards, and a pipeline trace beside them. */
+:root {
+  --bg: #f6f7f5; --surface: #ffffff; --ink: #18211f; --muted: #5b6764; --line: #dfe4e1;
+  --accent: #0f5b54; --accent-ink: #ffffff; --accent-soft: #e3efec; --brass: #8a6a2b;
+  --g3: #0f5b54; --g2: #3d6f9e; --g1: #7a6a45; --warn-bg: #fbf1df; --warn-ink: #7a4b07; --bad: #a33a2b;
+  --f-ui: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --f-ar: "IBM Plex Sans Arabic", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
+  --f-quran: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #18211f; --ink: #e6ece9; --muted: #9aa8a4; --line: #2a3533;
+  --accent: #5fb8ab; --accent-ink: #0b1513; --accent-soft: #1d3330; --brass: #d0ad68;
+  --g3: #5fb8ab; --g2: #86afd8; --g1: #c2ad7c; --warn-bg: #33281a; --warn-ink: #f0c98a; --bad: #e98a7c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18211f; --ink: #e6ece9; --muted: #9aa8a4; --line: #2a3533;
+  --accent: #5fb8ab; --accent-ink: #0b1513; --accent-soft: #1d3330; --brass: #d0ad68;
+  --g3: #5fb8ab; --g2: #86afd8; --g1: #c2ad7c; --warn-bg: #33281a; --warn-ink: #f0c98a; --bad: #e98a7c; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px }
+header h1 { margin: 0; font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em }
+header h1 .ar { font-family: var(--f-ar); color: var(--accent); margin-inline-start: 6px }
+header p { margin: 0; color: var(--muted); font-size: .9rem }
+nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line) }
+nav a { padding: 8px 12px; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500 }
+nav a[aria-current="page"] { color: var(--ink); border-color: var(--accent) }
+nav a:focus-visible, button:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+.query { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px }
+.qrow { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap }
+textarea { flex: 1 1 320px; min-width: 0; resize: vertical; min-height: 52px; font: 1.05rem/1.5 var(--f-ar); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px }
+button { font: 500 .95rem var(--f-ui); border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 9px 14px; cursor: pointer }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); min-width: 110px }
+button:disabled { opacity: .55; cursor: default }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.chips span.lbl { color: var(--muted); font-size: .82rem; margin-inline-end: 4px }
+.chip { font: .85rem var(--f-ar); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer }
+.chip small { color: var(--muted); font-family: var(--f-ui); margin-inline-start: 4px }
+
+.status { font-size: .88rem; color: var(--muted); min-height: 1.3em }
+.notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 10px 12px; font-size: .9rem }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start }
+@media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr) } }
+
+.results { display: grid; gap: 12px; min-width: 0 }
+.rhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.rhead h2 { margin: 0; font-size: 1rem; font-weight: 600 }
+.rhead .meta { color: var(--muted); font-size: .85rem }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 10px; min-width: 0 }
+.card .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap }
+.ref { font: 500 .9rem var(--f-ar); color: var(--brass) }
+.ref .num { font-family: var(--f-ui); font-variant-numeric: tabular-nums; color: var(--muted); margin-inline-start: 6px; font-size: .82rem }
+.grade { font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor }
+.grade.g3 { color: var(--g3) } .grade.g2 { color: var(--g2) } .grade.g1 { color: var(--g1) } .grade.kw { color: var(--muted) }
+.ayah { font: 1.6rem/2.15 var(--f-quran); direction: rtl; text-align: right; margin: 0; overflow-wrap: anywhere }
+.why { font: .98rem/1.7 var(--f-ar); margin: 0; padding-inline-start: 10px; border-inline-start: 3px solid var(--accent-soft) }
+.why.en { font-family: var(--f-ui); direction: ltr; text-align: left }
+.why .src { color: var(--muted); font-size: .82rem; font-family: var(--f-ui) }
+.guarded { font-size: .85rem; color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 6px 10px }
+details.tafsir summary { cursor: pointer; color: var(--muted); font-size: .85rem }
+details.tafsir p { font: .95rem/1.8 var(--f-ar); direction: rtl; text-align: right; margin: 8px 0 0; color: var(--ink) }
+.empty { color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); padding: 18px }
+
+aside.trace { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px) }
+@media (max-width: 900px) { aside.trace { position: static } }
+aside h3 { margin: 0; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.steps li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; font-size: .88rem }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; border: 2px solid var(--line) }
+li.run .dot { border-color: var(--accent); animation: pulse 1s infinite alternate }
+li.done .dot { background: var(--accent); border-color: var(--accent) }
+li.skip .dot { border-style: dashed }
+@keyframes pulse { to { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) { li.run .dot { animation: none } }
+.steps b { font-weight: 600 } .steps .t { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .8rem }
+.kv { font: .8rem/1.5 var(--f-mono); color: var(--muted); overflow-wrap: anywhere }
+.kv .ar { font-family: var(--f-ar); color: var(--ink); font-size: .88rem }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0 }
+.panel h2 { margin: 0; font-size: 1.05rem } .panel p { margin: 0; max-width: 72ch }
+.tbl { overflow-x: auto } table { border-collapse: collapse; width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { color: var(--muted); font-weight: 500; font-size: .8rem }
+td.q { font-family: var(--f-ar); direction: rtl; text-align: right; min-width: 220px }
+.num { text-align: right }
+.big { font-size: 1.5rem; font-weight: 600 }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px }
+.stat .lbl { color: var(--muted); font-size: .8rem }
+.flow { display: grid; gap: 8px; counter-reset: s; padding: 0; margin: 0; list-style: none }
+.flow li { counter-increment: s; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px }
+.flow li::before { content: counter(s); font: 600 .85rem var(--f-mono); color: var(--accent); padding-top: 2px }
+footer { color: var(--muted); font-size: .8rem; max-width: 90ch }
+[hidden] { display: none !important }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tadabbur <span class="ar">تدبّر</span></h1>
+    <p>Concept search over the Quran · Pipeline 1 demo (dialect-hardened core)</p>
+  </header>
+
+  <nav aria-label="Sections">
+    <a href="#search" data-view="search">Search</a>
+    <a href="#benchmark" data-view="benchmark">Benchmark</a>
+    <a href="#how" data-view="how">How it works</a>
+  </nav>
+
+  <!-- SEARCH -->
+  <section id="view-search" class="wrap">
+    <form class="query" id="qform" autocomplete="off">
+      <div class="qrow">
+        <label for="q" hidden>Describe a meaning or concept</label>
+        <textarea id="q" dir="auto" rows="2" placeholder="Describe a meaning or concept in any language or dialect…">الصبر عند البلاء</textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="primary" id="go" type="submit">Search</button>
+          <button id="stop" type="button" hidden>Stop</button>
+        </div>
+      </div>
+      <div class="chips" id="examples"><span class="lbl">Try:</span></div>
+      <div class="status" id="status" role="status" aria-live="polite">Loading the Quran index…</div>
+    </form>
+    <div class="notice" id="notice" hidden></div>
+    <div class="main">
+      <div class="results" id="results"><div class="empty">Loading…</div></div>
+      <aside class="trace" aria-label="Pipeline trace">
+        <h3>Pipeline trace</h3>
+        <ol class="steps" id="steps"></ol>
+        <div id="tracekv" class="kv"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- BENCHMARK -->
+  <section id="view-benchmark" class="wrap" hidden>
+    <div class="panel">
+      <h2>Qur'an QA 2023 · Task A · development set</h2>
+      <p>25 questions (4 have no answer in the Quran), scored against the official relevance labels with the task's metric: MAP@10 at passage level, where a no-answer question scores 1 only if the system says “no answer”. Our ayah results are mapped to the task's 1,266 thematic passages.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="bBase" type="button">Run keyword baseline (instant)</button>
+        <button id="bFull" class="primary" type="button">Run full pipeline (≈50 Claude calls)</button>
+        <button id="bStop" type="button" hidden>Stop</button>
+      </div>
+      <div class="status" id="bStatus" role="status" aria-live="polite"></div>
+      <div class="stats" id="bStats"></div>
+      <div class="tbl"><table id="bTable" hidden>
+        <thead><tr><th>ID</th><th>Question</th><th class="num">Relevant</th><th class="num">AP@10 keyword</th><th class="num">AP@10 pipeline</th><th>Pipeline said</th></tr></thead>
+        <tbody></tbody></table></div>
+      <p class="status">Reference points on the official <em>test</em> set (different questions): best submitted system MAP@10 0.2506 (TCE), BM25 baseline about 0.09. Offline, our keyword stage alone scores MAP@10 0.213 on train + dev (199 questions).</p>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section id="view-how" class="wrap" hidden>
+    <div class="panel">
+      <h2>What happens when you search</h2>
+      <ol class="flow">
+        <li><div><b>Understand</b> (1 Claude call, quick). Detects language and dialect, routes rulings or off-topic requests, and writes an MSA rewrite plus two paraphrases in Classical Quranic vocabulary. The raw query is kept for the ranking step.</div></li>
+        <li><div><b>Retrieve</b> (in your browser, no model). BM25 over two fields for all 6,236 ayat: the ayah text and Tafsir al-Muyassar, with Arabic normalization that matches Uthmani spelling to modern spelling. Each rewrite is searched in each field and the lists are merged with Reciprocal Rank Fusion; the top 40 go forward. Keyword search never runs on the raw dialect text.</div></li>
+        <li><div><b>Rank</b> (1 Claude call). Claude reads the raw query, the rewrite and each candidate with its tafsir, and returns only ayah IDs with a grade (direct, implicit or story, related) and a one-line reason, or “no relevant ayah”.</div></li>
+        <li><div><b>Guard</b>. IDs that were not among the candidates are dropped. Each reason is checked against the whole Quran for any run of 5 consecutive words; a reason that quotes the Quran is withheld.</div></li>
+        <li><div><b>Render</b>. Ayat are shown by ID from the Tanzil Uthmani text, never from model output. Each card links to the full tafsir it cites.</div></li>
+      </ol>
+      <p><b>Differences from the full pipeline 1 design:</b> no dense embedding search yet (no embedding API is reachable from this demo), and no Franco-Arabic transliteration step beyond what the understanding call does. Both are planned additions.</p>
+    </div>
+  </section>
+
+  <footer id="credits">
+    Quran text: Tanzil Project, Uthmani v1.1 (tanzil.net), shown verbatim under CC BY 3.0. Tafsir: Al-Tafsir al-Muyassar (King Fahd Complex). Benchmark: Qur'an QA 2023 shared task (Malhas, Mansour &amp; Elsayed, ArabicNLP 2023), used for evaluation only. Demo data comes from GitHub mirrors of these sources. Results are an aid to reflection, not a religious ruling.
+  </footer>
+</div>
+
+<script src="retrieval.js" charset="utf-8"></script>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const S = { quran: null, qqa: null, corpus: null, sample: null, ctl: null };
+
+const EXAMPLES = [
+  ["الصبر عند البلاء", "MSA"],
+  ["إزاي أصبر لما ربنا يبتليني بحاجة صعبة؟", "Egyptian"],
+  ["وش جزاء اللي يبر أمه وأبوه؟", "Gulf"],
+  ["forgiving people who wronged you", "English"],
+  ["قصة الأخ اللي إخواته رموه في البير", "story"],
+  ["ezay rabena by2bal el tawba", "Franco"],
+];
+
+// ---------- Routing ----------
+function route() {
+  const v = (location.hash || "#search").slice(1);
+  const view = ["search", "benchmark", "how"].includes(v) ? v : "search";
+  for (const n of ["search", "benchmark", "how"]) $("#view-" + n).hidden = n !== view;
+  document.querySelectorAll("nav a").forEach((a) => {
+    if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+}
+window.addEventListener("hashchange", route);
+
+// ---------- Boot ----------
+async function boot() {
+  route();
+  const ex = $("#examples");
+  for (const [q, tag] of EXAMPLES) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    b.innerHTML = `${esc(q)}<small>${esc(tag)}</small>`; b.dir = "auto";
+    b.onclick = () => { $("#q").value = q; search(); };
+    ex.append(b);
+  }
+  try {
+    const [quran, qqa] = await Promise.all([fetch("data/quran.json").then((r) => r.json()), fetch("data/qqa23.json").then((r) => r.json())]);
+    S.quran = quran; S.qqa = qqa;
+    await new Promise((r) => setTimeout(r, 0));
+    S.corpus = new TadabburCore.Corpus(quran);
+  } catch (e) {
+    $("#status").textContent = "The Quran index could not be loaded. Reload the page to try again.";
+    $("#results").innerHTML = ""; return;
+  }
+  S.sample = window.claude?.use ? await window.claude.use("sample").catch(() => null) : null;
+  keywordPreview($("#q").value);
+  $("#status").textContent = S.sample
+    ? "Index ready: 6,236 ayat with Tafsir al-Muyassar. Showing a keyword preview; press Search to run the full pipeline."
+    : "Index ready. Claude is not available in this view, so only the keyword stage runs.";
+}
+
+// ---------- Pipeline ----------
+const LANG_LABEL = { msa: "MSA", egyptian: "Egyptian", gulf: "Gulf", levantine: "Levantine", maghrebi: "Maghrebi", franco: "Franco-Arabic", english: "English", other: "Other" };
+
+function understandPrompt(q) {
+  return `You are the query-understanding step of Tadabbur, a tool that finds Quranic ayat discussing a meaning or concept.
+The user's query may be in Modern Standard Arabic, an Arabic dialect (Egyptian, Gulf, Levantine, Maghrebi), Franco-Arabic (Arabic in Latin letters and digits), English, or another language.
+
+Reply with only one JSON object, no other text:
+{"language": "msa" | "egyptian" | "gulf" | "levantine" | "maghrebi" | "franco" | "english" | "other",
+ "intent": "concept" | "verse_lookup" | "ruling" | "out_of_scope",
+ "msa": "the query restated as a short Modern Standard Arabic description of the concept",
+ "classical": ["a paraphrase using Classical / Quranic Arabic vocabulary", "a second, different paraphrase"],
+ "english": "a short English gloss"}
+
+Rules:
+- Keep the user's meaning exactly. Do not add new topics.
+- Each paraphrase is at most 15 words and names the concept the way classical tafsir would.
+- Never write or quote Quranic verse text.
+- "ruling" means the user asks for a legal ruling or fatwa. "out_of_scope" means it cannot be about a meaning or theme of the Quran.
+
+Query: <<<${q}>>>`;
+}
+
+function rerankPrompt(q, u, cands, lang) {
+  const lines = cands.map(({ id, i }) => {
+    const t = S.quran.muyassar[i].replace(/\s+/g, " ").slice(0, 380);
+    return `[${id}] ${S.quran.uthmani[i]} || ${t}`;
+  }).join("\n");
+  return `You are the ranking step of Tadabbur, which finds Quranic ayat that discuss the user's concept.
+
+User query (original): <<<${q}>>>
+Understood as: ${u.msa || q}
+
+Candidates, one per line as [surah:ayah] ayah text || Tafsir al-Muyassar excerpt:
+${lines}
+
+Task:
+- Choose up to 10 candidates that discuss the concept, best first.
+- grade 3 = the ayah addresses the concept directly; 2 = it conveys it implicitly or through a story; 1 = closely related.
+- Leave out anything not relevant. If none is relevant, return "no_answer": true with an empty list.
+- "why": one sentence of at most 30 words, in ${lang === "en" ? "English" : "Modern Standard Arabic"}, explaining the connection in your own words based on Tafsir al-Muyassar. Never quote or reproduce the ayah text.
+- Use only IDs from the candidate list.
+
+Reply with only JSON: {"no_answer": false, "results": [{"id": "2:153", "grade": 3, "why": "..."}]}`;
+}
+
+async function understand(q, signal) {
+  const u = await S.sample.json(understandPrompt(q), { modelTier: "quick", signal });
+  const clean = (x) => (typeof x === "string" ? x.trim() : "");
+  return {
+    language: LANG_LABEL[u?.language] ? u.language : "other",
+    intent: ["concept", "verse_lookup", "ruling", "out_of_scope"].includes(u?.intent) ? u.intent : "concept",
+    msa: clean(u?.msa), classical: Array.isArray(u?.classical) ? u.classical.map(clean).filter(Boolean).slice(0, 3) : [],
+    english: clean(u?.english),
+  };
+}
+
+function viewsFor(q, u) {
+  const v = [u.msa, ...u.classical];
+  if (u.language === "msa") v.unshift(q);          // never run keyword search on raw dialect text
+  return [...new Set(v.filter(Boolean))];
+}
+
+async function rerank(q, u, cands, signal) {
+  const lang = u.language === "english" ? "en" : "ar";
+  const r = await S.sample.json(rerankPrompt(q, u, cands, lang), { modelTier: "default", signal });
+  const allowed = new Map(cands.map((c) => [c.id, c]));
+  const seen = new Set(); let dropped = 0, guarded = 0;
+  const results = [];
+  for (const x of Array.isArray(r?.results) ? r.results : []) {
+    const id = String(x?.id || "").trim();
+    if (!allowed.has(id) || seen.has(id)) { dropped++; continue; }
+    seen.add(id);
+    let why = typeof x.why === "string" ? x.why.trim() : "";
+    const g = why ? S.corpus.guard.check(why) : { ok: true };
+    if (!g.ok) { why = ""; guarded++; }
+    const grade = [1, 2, 3].includes(Number(x.grade)) ? Number(x.grade) : 1;
+    results.push({ ...allowed.get(id), grade, why, guardedWhy: !g.ok, lang });
+  }
+  return { noAnswer: !!r?.no_answer && results.length === 0, results: results.slice(0, 10), dropped, guarded };
+}
+
+async function runPipeline(q, { signal, onStep = () => {} } = {}) {
+  const T = {}; let t = performance.now();
+  onStep("understand", "run");
+  const u = await understand(q, signal);
+  T.understand = performance.now() - t; onStep("understand", "done", u);
+
+  t = performance.now(); onStep("retrieve", "run");
+  const views = viewsFor(q, u);
+  const { fused, trace } = S.corpus.retrieve(views.length ? views : [q], { depth: 200, limit: 40 });
+  const cands = fused.map(([i]) => ({ i, id: S.corpus.ids[i] }));
+  T.retrieve = performance.now() - t; onStep("retrieve", "done", { views, trace, n: cands.length });
+
+  if (!cands.length) { onStep("rank", "skip"); onStep("guard", "skip"); return { u, views, cands, out: { noAnswer: true, results: [], dropped: 0, guarded: 0 }, T, fused }; }
+  t = performance.now(); onStep("rank", "run");
+  const out = await rerank(q, u, cands, signal);
+  T.rank = performance.now() - t; onStep("rank", "done", out);
+  onStep("guard", "done", out);
+  return { u, views, cands, out, T, fused };
+}
+
+// ---------- Search UI ----------
+const STEP_NAMES = { understand: "Understand query", retrieve: "Retrieve candidates", rank: "Rank with Claude", guard: "Guard and render" };
+function resetSteps() {
+  $("#steps").innerHTML = Object.entries(STEP_NAMES).map(([k, n]) => `<li id="st-${k}"><span class="dot"></span><div><b>${n}</b> <span class="t"></span><div class="kv" id="kv-${k}"></div></div></li>`).join("");
+  $("#tracekv").innerHTML = "";
+}
+function setStep(k, state, data, ms) {
+  const li = $("#st-" + k); if (!li) return;
+  li.className = state; if (ms != null) li.querySelector(".t").textContent = `${(ms / 1000).toFixed(1)} s`;
+  const kv = $("#kv-" + k);
+  if (k === "understand" && data) kv.innerHTML = `${esc(LANG_LABEL[data.language])} · ${esc(data.intent)}<br><span class="ar" dir="rtl">${esc(data.msa)}</span>${data.classical.map((c) => `<br><span class="ar" dir="rtl">${esc(c)}</span>`).join("")}`;
+  if (k === "retrieve" && data) kv.innerHTML = `${data.views.length} views × 2 fields → ${data.n} candidates (RRF)`;
+  if (k === "rank" && data) kv.innerHTML = data.noAnswer ? "No relevant ayah" : `${data.results.length} ayat kept`;
+  if (k === "guard" && data) kv.innerHTML = `${data.dropped} unknown ${data.dropped === 1 ? "ID" : "IDs"} dropped · ${data.guarded} ${data.guarded === 1 ? "reason" : "reasons"} withheld`;
+}
+
+function card({ i, id, grade, why, guardedWhy, lang }, kw = false) {
+  const [s, a] = id.split(":").map(Number);
+  const gl = kw ? ["kw", "keyword match"] : { 3: ["g3", "Direct"], 2: ["g2", "Implicit / story"], 1: ["g1", "Related"] }[grade];
+  const whyHtml = kw ? "" : guardedWhy
+    ? `<div class="guarded">The explanation was withheld because it reproduced Quranic wording. See the tafsir below.</div>`
+    : why ? `<p class="why ${lang === "en" ? "en" : ""}" dir="${lang === "en" ? "ltr" : "rtl"}">${esc(why)} <span class="src">— based on al-Tafsir al-Muyassar</span></p>` : "";
+  return `<article class="card">
+    <div class="top"><span class="ref" dir="rtl">سورة ${esc(S.quran.names[s - 1])}<span class="num">${s}:${a}</span></span><span class="grade ${gl[0]}">${gl[1]}</span></div>
+    <p class="ayah" lang="ar">${esc(S.quran.uthmani[i])} ﴿${a.toLocaleString("ar-EG")}﴾</p>
+    ${whyHtml}
+    <details class="tafsir"><summary>Tafsir al-Muyassar</summary><p lang="ar">${esc(S.quran.muyassar[i])}</p></details>
+  </article>`;
+}
+
+function keywordPreview(q) {
+  resetSteps();
+  const { fused } = S.corpus.retrieve([q], { limit: 8 });
+  ["understand", "rank", "guard"].forEach((k) => setStep(k, "skip"));
+  setStep("retrieve", "done", { views: [q], n: fused.length });
+  $("#notice").hidden = true;
+  $("#results").innerHTML = `<div class="rhead"><h2>Keyword preview</h2><span class="meta">BM25 on ayah text and tafsir · no Claude call</span></div>` +
+    (fused.length ? fused.map(([i]) => card({ i, id: S.corpus.ids[i] }, true)).join("") : `<div class="empty">No keyword matches.</div>`);
+}
+
+async function search() {
+  const q = $("#q").value.trim();
+  if (!q || !S.corpus) return;
+  if (!S.sample) { keywordPreview(q); return; }
+  S.ctl?.abort(); S.ctl = new AbortController();
+  $("#go").disabled = true; $("#stop").hidden = false; $("#notice").hidden = true;
+  $("#status").textContent = "Thinking… the first call may ask you to allow Claude for this page.";
+  $("#results").innerHTML = `<div class="empty">Working on it…</div>`;
+  resetSteps();
+  const t0 = performance.now();
+  try {
+    const r = await runPipeline(q, { signal: S.ctl.signal, onStep: (k, st, d) => setStep(k, st, d) });
+    setStep("understand", "done", r.u, r.T.understand); setStep("retrieve", "done", { views: r.views, n: r.cands.length }, r.T.retrieve);
+    if (r.T.rank != null) setStep("rank", "done", r.out, r.T.rank);
+    if (r.u.intent === "ruling") { $("#notice").hidden = false; $("#notice").textContent = "This looks like a request for a religious ruling. Tadabbur shows ayat related to the topic with their tafsir; it does not issue rulings. Please ask a qualified scholar."; }
+    if (r.u.intent === "out_of_scope") { $("#notice").hidden = false; $("#notice").textContent = "This doesn't look like a meaning or theme to search for in the Quran, so results may be unrelated."; }
+    const head = `<div class="rhead"><h2>${r.out.noAnswer ? "No relevant ayah found" : `${r.out.results.length} ayat`}</h2><span class="meta">${esc(LANG_LABEL[r.u.language])} query · ${((performance.now() - t0) / 1000).toFixed(1)} s · 2 Claude calls</span></div>`;
+    $("#results").innerHTML = head + (r.out.noAnswer
+      ? `<div class="empty">Claude judged that none of the ${r.cands.length} candidates discuss this concept. Try describing it differently.</div>`
+      : r.out.results.map((x) => card(x)).join(""));
+    $("#status").textContent = "Done.";
+  } catch (e) {
+    const msg = {
+      cancelled: "Stopped.", not_granted: "Claude isn't allowed for this page, so only the keyword preview is available.",
+      sampling_disabled: "Claude isn't available for this account.", rate_limited: "Too many requests right now. Wait a moment, then search again.",
+      invalid_json: "Claude's answer couldn't be read. Search again.", refused: "Claude declined this query. Try rephrasing it.",
+    }[e?.code] || "Something went wrong reaching Claude. Search again.";
+    $("#status").textContent = msg;
+    if (e?.code !== "cancelled") keywordPreview(q);
+  } finally { $("#go").disabled = false; $("#stop").hidden = true; }
+}
+$("#qform").addEventListener("submit", (e) => { e.preventDefault(); search(); });
+$("#q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); search(); } });
+$("#stop").onclick = () => S.ctl?.abort();
+
+// ---------- Benchmark ----------
+function fmt(x) { return x.toFixed(3); }
+function bRender(rows, sum) {
+  const tb = $("#bTable tbody"); $("#bTable").hidden = false;
+  tb.innerHTML = rows.map((r) => `<tr><td>${esc(r.qid)}</td><td class="q">${esc(r.q)}</td><td class="num">${r.rel[0] === "-1" ? "none" : r.rel.length}</td>
+    <td class="num">${r.base != null ? fmt(r.base) : "—"}</td><td class="num">${r.full != null ? fmt(r.full) : "—"}</td><td>${esc(r.said || "")}</td></tr>`).join("");
+  $("#bStats").innerHTML = Object.entries(sum).map(([k, v]) => `<div class="stat"><div class="lbl">${esc(k)}</div><div class="big">${esc(v)}</div></div>`).join("");
+}
+let B = { rows: [], ctl: null };
+function baseline() {
+  const toP = TadabburCore.passageMapper(S.corpus, S.qqa.passages);
+  const scores = [];
+  B.rows = S.qqa.dev.map(([qid, q, rel]) => {
+    const { fused } = S.corpus.retrieve([q], { depth: 300, limit: 300 });
+    const sc = TadabburCore.scoreQuestion(toP(fused.map(([i]) => i)).slice(0, 100), rel);
+    scores.push(sc); return { qid, q, rel, base: sc.ap10 };
+  });
+  const s = TadabburCore.summarize(scores);
+  bRender(B.rows, { "Keyword MAP@10": fmt(s.map10), "Keyword MRR": fmt(s.mrr), "Recall@50 (answerable)": fmt(s.recall50_answerable) });
+  $("#bStatus").textContent = "Keyword baseline done. It never answers “no answer”, so the 4 no-answer questions score 0.";
+  return s;
+}
+$("#bBase").onclick = () => S.corpus && baseline();
+$("#bFull").onclick = async () => {
+  if (!S.corpus) return;
+  if (!S.sample) { $("#bStatus").textContent = "Claude is not available in this view, so only the keyword baseline can run."; return; }
+  const sb = baseline();
+  B.ctl = new AbortController(); $("#bFull").disabled = true; $("#bStop").hidden = false;
+  const toP = TadabburCore.passageMapper(S.corpus, S.qqa.passages);
+  const scores = [];
+  try {
+    for (let k = 0; k < S.qqa.dev.length; k++) {
+      const [qid, q, rel] = S.qqa.dev[k];
+      $("#bStatus").textContent = `Question ${k + 1} of ${S.qqa.dev.length}…`;
+      const r = await runPipeline(q, { signal: B.ctl.signal });
+      let ranked;
+      if (r.out.noAnswer) ranked = ["-1"];
+      else {
+        const top = [...r.out.results].sort((a, b) => b.grade - a.grade).map((x) => x.i);
+        const rest = r.fused.map(([i]) => i).filter((i) => !top.includes(i));
+        ranked = toP([...top, ...rest]).slice(0, 100);
+      }
+      const sc = TadabburCore.scoreQuestion(ranked, rel); scores.push(sc);
+      Object.assign(B.rows[k], { full: sc.ap10, said: r.out.noAnswer ? "no answer" : `${r.out.results.length} ayat` });
+      const s = TadabburCore.summarize(scores);
+      bRender(B.rows, { "Pipeline MAP@10": `${fmt(s.map10)} (${scores.length}/25)`, "Keyword MAP@10": fmt(sb.map10), "No-answer correct": `${scores.filter((x) => x.zero && x.ap10 === 1).length}/${scores.filter((x) => x.zero).length}` });
+    }
+    $("#bStatus").textContent = "Full pipeline done on all 25 development questions.";
+  } catch (e) {
+    $("#bStatus").textContent = e?.code === "cancelled" ? `Stopped after ${scores.length} questions; the scores cover those only.` : `Stopped after ${scores.length} questions (${e?.code || "error"}). Scores cover the completed questions.`;
+  } finally { $("#bFull").disabled = false; $("#bStop").hidden = true; }
+};
+$("#bStop").onclick = () => B.ctl?.abort();
+
+boot();
+</script>

@@ -1,0 +1,11 @@
+# Source data and generated data (licences don't clearly allow redistribution — rebuild locally)
+data-src/
+site/data/
+site/local.html
+site/_test.html
+eval/runs/
+
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
