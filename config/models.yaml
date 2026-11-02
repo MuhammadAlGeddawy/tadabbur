@@ -1,0 +1,56 @@
+# Tadabbur model routing (LiteLLM format).
+#
+# The code only asks for ROLES. Each role maps to a model alias below; each alias lists one or more
+# deployments. To switch provider, edit `litellm_params` — no code changes.
+#
+# Defaults route everything through OpenRouter's OpenAI-compatible API with one key (OPENROUTER_API_KEY).
+# The model IDs are starting points: run `make check-models` with your key to confirm they exist on
+# OpenRouter today, and change them here if not.
+#
+# Direct-provider examples (add a key to .env, then point a role's alias at these):
+#   model: anthropic/<claude-model-id>        api_key: os.environ/ANTHROPIC_API_KEY
+#   model: openai/<gpt-model-id>               api_key: os.environ/OPENAI_API_KEY
+#   model: gemini/<gemini-model-id>            api_key: os.environ/GEMINI_API_KEY
+
+roles:
+  understand: tadabbur-understand   # fast: dialect detection + MSA / Classical rewrites (small JSON)
+  rerank: tadabbur-rerank           # strong: listwise ranking of ~40 candidates to ayah IDs
+  embed: tadabbur-embed             # dense retrieval; changing it requires `make index` again
+
+model_list:
+  - model_name: tadabbur-understand
+    litellm_params:
+      model: openai/google/gemini-2.5-flash
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: tadabbur-understand-backup
+    litellm_params:
+      model: openai/openai/gpt-4o-mini
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: tadabbur-rerank
+    litellm_params:
+      model: openai/anthropic/claude-sonnet-4.5
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: tadabbur-rerank-backup
+    litellm_params:
+      model: openai/openai/gpt-4.1
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: tadabbur-embed
+    litellm_params:
+      model: openai/openai/text-embedding-3-large
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+
+fallbacks:
+  - tadabbur-understand: [tadabbur-understand-backup]
+  - tadabbur-rerank: [tadabbur-rerank-backup]
+
+settings:
+  temperature: 0
+  timeout: 60
+  num_retries: 2

@@ -1,0 +1,10 @@
+services:
+  tadabbur:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    volumes:
+      - ./data/index:/app/data/index     # dense index built with `make index` (optional)
+      - llm-cache:/app/.cache/llm
+volumes:
+  llm-cache:
