@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tadabbur Concept Search</title>
+<meta name="description" content="Find the ayat of the Quran that discuss a meaning or concept, in any language or Arabic dialect.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tadabbur <span class="ar">تدبّر</span></h1>
+    <p>Find the ayat that discuss a meaning or concept, in any language or Arabic dialect</p>
+  </header>
+
+  <nav aria-label="Sections">
+    <a href="#search" data-view="search">Search</a>
+    <a href="#how" data-view="how">How it works</a>
+  </nav>
+
+  <section id="view-search" class="wrap">
+    <form class="query" id="qform" autocomplete="off">
+      <div class="qrow">
+        <label for="q" hidden>Describe a meaning or concept</label>
+        <textarea id="q" dir="auto" rows="2" maxlength="300" placeholder="Describe a meaning or concept in any language or dialect…"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="primary" id="go" type="submit">Search</button>
+        </div>
+      </div>
+      <div class="chips" id="examples"><span class="lbl">Try:</span></div>
+      <div class="status" id="status" role="status" aria-live="polite">Connecting…</div>
+    </form>
+    <div class="notice" id="notice" hidden></div>
+    <div class="main">
+      <div class="results" id="results">
+        <div class="empty">Type a concept, or pick an example above. Results show each ayah in Uthmani script with a short reason based on Tafsir al-Muyassar.</div>
+      </div>
+      <aside class="trace" aria-label="Pipeline trace">
+        <h3>Pipeline trace</h3>
+        <ol class="steps" id="steps"></ol>
+      </aside>
+    </div>
+  </section>
+
+  <section id="view-how" class="wrap" hidden>
+    <div class="panel">
+      <h2>What happens when you search</h2>
+      <ol class="flow">
+        <li><div><b>Understand.</b> A fast model detects the language and dialect, routes requests for rulings, and writes an MSA rewrite plus two paraphrases in Classical Quranic vocabulary. The raw query is kept for ranking.</div></li>
+        <li><div><b>Retrieve.</b> Keyword search (BM25) over the ayah text and Tafsir al-Muyassar for all 6,236 ayat, plus embedding search on the raw query and the rewrite. All lists are merged with Reciprocal Rank Fusion; the top 40 go forward. Keyword search never runs on raw dialect text.</div></li>
+        <li><div><b>Rank.</b> A strong model reads each candidate with its tafsir and returns only ayah IDs, a grade (direct, implicit or story, related) and a one-line reason, or “no relevant ayah”.</div></li>
+        <li><div><b>Guard.</b> IDs outside the candidates are dropped, and any reason that reproduces 5 or more consecutive words of the Quran is withheld.</div></li>
+        <li><div><b>Render.</b> Ayat are shown by ID from the Tanzil Uthmani text, never from model output.</div></li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    Quran text: Tanzil Project, Uthmani v1.1 (tanzil.net), shown verbatim under CC BY 3.0. Tafsir: Al-Tafsir al-Muyassar (King Fahd Complex). Results are an aid to reflection, not a religious ruling.
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

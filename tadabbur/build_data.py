@@ -6,8 +6,8 @@ Inputs (GitHub mirrors, see D21):
   - Qur'an QA 2023 Task A (ghazaleh-mahmoodi mirror): QPC passages, questions, qrels (evaluation only, D14)
 
 Outputs:
-  site/data/quran.json   {names, counts, uthmani[], muyassar[]}  (index = global ayah order)
-  site/data/qqa23.json   {passages:[[id, s, a1, a2]], dev:[...], train:[...]}  (evaluation only)
+  data/quran.json   {names, counts, uthmani[], muyassar[], sha256_uthmani}  (index = global ayah order)
+  data/qqa23.json   {passages:[[id, s, a1, a2]], dev:[...], train:[...]}  (evaluation only)
 """
 import hashlib
 import json
@@ -16,7 +16,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "data-src")
-OUT = os.path.join(ROOT, "site", "data")
+OUT = os.environ.get("TADABBUR_DATA_DIR", os.path.join(ROOT, "data"))
 os.makedirs(OUT, exist_ok=True)
 
 NAMES = """الفاتحة البقرة آل_عمران النساء المائدة الأنعام الأعراف الأنفال التوبة يونس هود يوسف الرعد إبراهيم الحجر النحل الإسراء الكهف مريم طه الأنبياء الحج المؤمنون النور الفرقان الشعراء النمل القصص العنكبوت الروم لقمان السجدة الأحزاب سبأ فاطر يس الصافات ص الزمر غافر فصلت الشورى الزخرف الدخان الجاثية الأحقاف محمد الفتح الحجرات ق الذاريات الطور النجم القمر الرحمن الواقعة الحديد المجادلة الحشر الممتحنة الصف الجمعة المنافقون التغابن الطلاق التحريم الملك القلم الحاقة المعارج نوح الجن المزمل المدثر القيامة الإنسان المرسلات النبأ النازعات عبس التكوير الانفطار المطففين الانشقاق البروج الطارق الأعلى الغاشية الفجر البلد الشمس الليل الضحى الشرح التين العلق القدر البينة الزلزلة العاديات القارعة التكاثر العصر الهمزة الفيل قريش الماعون الكوثر الكافرون النصر المسد الإخلاص الفلق الناس""".split()
